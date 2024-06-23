@@ -10,7 +10,19 @@ class User:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS permissions
-                     (FOREIGN KEY(role) REFERENCES users(role), admin INTEGER, storage_view INTEGER, storage_edit INTEGER, users_view INTEGER, users_edit INTEGER, permissions_edit INTEGER)''')
+                     (permission_username TEXT, admin INTEGER, storage_view INTEGER, storage_edit INTEGER, users_view INTEGER, users_edit INTEGER, permissions_edit INTEGER)''')
+        conn.close()
+        # Add default admin user
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        c.execute("SELECT * FROM users WHERE username = 'admin'")
+        result = c.fetchone()
+        if result == None:
+            c.execute("INSERT INTO users (username, password, role) VALUES ('admin', 'admin', 'admin')")
+            c.execute("INSERT INTO permissions (permission_username, admin, storage_view, storage_edit, users_view, users_edit, permissions_edit) VALUES ('admin', 1, 1, 1, 1, 1, 1)")
+            conn.commit()
+        conn.close()
+
     def login(self, username, password):
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
@@ -64,7 +76,7 @@ class User:
     def get_permissions(self, username):
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
-        c.execute("SELECT * FROM permissions join users on permissions.role = users.role WHERE users.username = ?", (username,))
+        c.execute("SELECT permission_username , admin, storage_view, storage_edit, users_view, users_edit, permissions_edit FROM permissions join users on permissions.permission_username = users.username WHERE users.username = ?", (username,))
         result = c.fetchone()
         conn.close()
         return result
@@ -72,7 +84,7 @@ class User:
     def update_permissions(self, username, admin, storage_view, storage_edit, users_view, users_edit, permissions_edit):
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
-        c.execute("UPDATE permissions SET admin = ?, storage_view = ?, storage_edit = ?, users_view = ?, users_edit = ?, permissions_edit = ? WHERE role = (SELECT role FROM users WHERE username = ?)", (admin, storage_view, storage_edit, users_view, users_edit, permissions_edit, username))
+        c.execute("UPDATE permissions SET admin = ?, storage_view = ?, storage_edit = ?, users_view = ?, users_edit = ?, permissions_edit = ? WHERE permission_username = ?", (admin, storage_view, storage_edit, users_view, users_edit, permissions_edit, username))
         conn.commit()
         conn.close()
         return True
