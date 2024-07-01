@@ -1,8 +1,9 @@
 import tkinter as tk
 import tkinter.ttk as ttk
-from time import sleep
+from time import sleep, time
 from user import User
 from storage import Storage
+from tkinter import filedialog
 
 class LOG_IN(tk.Tk):
     def __init__(self):
@@ -12,7 +13,6 @@ class LOG_IN(tk.Tk):
         self.resizable(False, False)
         self.create_widgets()
         self.mainloop()
-        #self.iconify()
 
     def create_widgets(self):
         self.label = ttk.Label(self, text="Username:")
@@ -35,8 +35,10 @@ class LOG_IN(tk.Tk):
         result = user.login(username, password)
         if result:
             self.label_empty.config(text="Zalogowano pomyślnie")
+            self.update()
             sleep(1)
             self.destroy()
+            GUI.logged_user = username
             app = GUI()
             app.mainloop()
         else:
@@ -47,20 +49,41 @@ class LOG_IN(tk.Tk):
             self.update()
 
 class GUI(tk.Tk):
+
+    logged_user = ""
+
     def __init__(self):
         super().__init__()
         self.title("Storage_Management_System")
         self.geometry("800x600")
         self.resizable(False, False)
         self.create_menu()
-        self.labelframe = ttk.LabelFrame(self, text="")
+        self.widgets_dissable()
+        self.widgets_permission_update(self.logged_user)
+        self.labelframe = ttk.LabelFrame(self, text="info")
         self.labelframe.pack(fill=tk.BOTH, expand=True)
+        self.label= tk.Label(self.labelframe, text="Welcome to Storage Management System").pack()
+        self.label= tk.Label(self.labelframe, text="Logged as: "+self.logged_user).pack()
+        self.label= tk.Label(self.labelframe, text="You have following permissions:").pack()
+        user=User().get_permissions(self.logged_user)
+        userperm=[]
+        for n in user:
+            if n==1:
+                userperm.insert(user.index(n),"True")
+            else:
+                userperm.insert(user.index(n),"False")
+        self.label= tk.Label(self.labelframe, text="Admin: "+userperm[1]).pack()
+        self.label= tk.Label(self.labelframe, text="Storage View: "+userperm[2]).pack()
+        self.label= tk.Label(self.labelframe, text="Storage Edit: "+userperm[3]).pack()
+        self.label= tk.Label(self.labelframe, text="Users View: "+userperm[4]).pack()
+        self.label= tk.Label(self.labelframe, text="Users Edit: "+userperm[5]).pack()
+        self.label= tk.Label(self.labelframe, text="Permissions Edit: "+userperm[6]).pack()
 
     def create_menu(self):
         self.menu = tk.Menu(self,tearoff=False)
         self.config(menu=self.menu)
-        self.menu_file = tk.Menu(self.menu)
-        self.menu.add_cascade(label="File", menu=self.menu_file)
+        self.menu_file = tk.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label=GUI.logged_user, menu=self.menu_file)
         self.menu_file.add_command(label="Log Out", command=self.log_out)
         self.menu_file.add_command(label="Exit", command=self.quit)
         self.menu_storage = tk.Menu(self.menu, tearoff=False)
@@ -75,8 +98,8 @@ class GUI(tk.Tk):
         self.menu_orders.add_command(label="Add", command=self.add_orders)
         self.menu_orders.add_command(label="Edit", command=self.edit_orders)
         self.menu_orders.add_command(label="Delete", command=self.delete_orders)
-        self.menu_orders.add_command(label="Import CSV", command=self.import_csv)
-        self.menu_orders.add_command(label="Export CSV", command=self.export_csv)
+        self.menu_orders.add_command(label="Import CSV", command=self.import_csv_confirm)
+        self.menu_orders.add_command(label="Export CSV", command=self.export_csv_confirm)
         self.menu_users = tk.Menu(self.menu, tearoff=False)
         self.menu.add_cascade(label="Users", menu=self.menu_users)
         self.menu_users.add_command(label="View", command=self.view_users)
@@ -113,7 +136,7 @@ class GUI(tk.Tk):
     def view_storage(self):
         self.create_frame("View Storage")
         self.create_view_storage_control_frame()
-        self.treeview = ttk.Treeview(self.labelframe, columns=("ID", "Name", "Price", "Quantity"))
+        self.treeview = ttk.Treeview(self.labelframe, columns=("Name", "Price", "Quantity"))
         self.treeview.heading("#0", text="ID")
         self.treeview.heading("#1", text="Name")
         self.treeview.heading("#2", text="Price")
@@ -127,7 +150,7 @@ class GUI(tk.Tk):
         self.treeview.delete(*self.treeview.get_children())
         self.storage = Storage().get_items()
         for item in self.storage:
-            self.treeview.insert("", "end", values=item)
+            self.treeview.insert("", "end", text=item[0], values=(item[1], item[2], item[3]))
 
     def search_storage(self):
         filter = self.combobox_filter.get()
@@ -136,7 +159,7 @@ class GUI(tk.Tk):
         self.treeview.delete(*self.treeview.get_children())
         self.storage = Storage().get_items(filter, value, order_by)
         for item in self.storage:
-            self.treeview.insert("", "end", values=item)
+            self.treeview.insert("", "end", text=item[0], values=(item[1], item[2], item[3]))
 
     def add_storage(self):
         self.create_frame("Add Storage")
@@ -227,7 +250,7 @@ class GUI(tk.Tk):
 
     def view_orders(self):
         self.create_frame("View Orders")
-        self.treeview = ttk.Treeview(self.labelframe, columns=("Order ID", "Product ID", "Quantity", "Date"))
+        self.treeview = ttk.Treeview(self.labelframe, columns=( "Product ID", "Quantity", "Date"))
         self.treeview.heading("#0", text="Order ID")
         self.treeview.heading("#1", text="Product ID")
         self.treeview.heading("#2", text="Quantity")
@@ -241,7 +264,7 @@ class GUI(tk.Tk):
         self.treeview.delete(*self.treeview.get_children())
         self.orders = Storage().get_orders()
         for order in self.orders:
-            self.treeview.insert("", "end", values=order)
+            self.treeview.insert("", "end", text=order[0], values=(order[1], order[2], order[3]))
 
     def add_orders(self):
         self.create_frame("Add Orders")
@@ -253,18 +276,13 @@ class GUI(tk.Tk):
         self.label.pack()
         self.entry_quantity = ttk.Entry(self.labelframe)
         self.entry_quantity.pack()
-        self.label = ttk.Label(self.labelframe, text="Date:")
-        self.label.pack()
-        self.entry_date = ttk.Entry(self.labelframe)
-        self.entry_date.pack()
         self.button = ttk.Button(self.labelframe, text="Add", command=self.add_orders_confirm)
         self.button.pack()
 
     def add_orders_confirm(self):
         product_id = self.entry_product_id.get()
         quantity = self.entry_quantity.get()
-        date = self.entry_date.get()
-        Storage().add_order(product_id, quantity, date)
+        Storage().add_order(product_id, quantity)
         self.create_frame("Add Orders")
         self.label = ttk.Label(self.labelframe, text="Order added successfully")
         self.label.pack()
@@ -283,34 +301,25 @@ class GUI(tk.Tk):
         order = Storage().get_order(order_id)
         if order:
             self.create_frame("Edit Orders")
-            self.label = ttk.Label(self.labelframe, text="Product ID:")
+            self.label = ttk.Label(self.labelframe, text="Order ID: "+order_id)
             self.label.pack()
-            self.entry_product_id = ttk.Entry(self.labelframe)
-            self.entry_product_id.insert(0, order[1])
-            self.entry_product_id.pack()
+            self.label = ttk.Label(self.labelframe, text="Product ID: "+str(order[1]))
+            self.label.pack()
             self.label = ttk.Label(self.labelframe, text="Quantity:")
             self.label.pack()
             self.entry_quantity = ttk.Entry(self.labelframe)
             self.entry_quantity.insert(0, order[2])
             self.entry_quantity.pack()
-            self.label = ttk.Label(self.labelframe, text="Date:")
-            self.label.pack()
-            self.entry_date = ttk.Entry(self.labelframe)
-            self.entry_date.insert(0, order[3])
-            self.entry_date.pack()
-            self.button = ttk.Button(self.labelframe, text="Edit", command=self.edit_orders_confirm)
+            self.button = ttk.Button(self.labelframe, text="Edit", command=lambda:self.edit_orders_confirm(order_id))
             self.button.pack()
         else:
             self.create_frame("Edit Orders")
             self.label = ttk.Label(self.labelframe, text="Order not found")
             self.label.pack()
 
-    def edit_orders_confirm(self):
-        order_id = self.entry_order_id.get()
-        product_id = self.entry_product_id.get()
+    def edit_orders_confirm(self, order_id):
         quantity = self.entry_quantity.get()
-        date = self.entry_date.get()
-        Storage().update_order(order_id, product_id, quantity, date)
+        Storage().update_order(order_id, quantity)
         self.create_frame("Edit Orders")
         self.label = ttk.Label(self.labelframe, text="Edit successful")
         self.label.pack()
@@ -333,15 +342,11 @@ class GUI(tk.Tk):
 
     def import_csv(self):
         self.create_frame("Import CSV")
-        self.label = ttk.Label(self.labelframe, text="Filename:")
-        self.label.pack()
-        self.entry_filename = ttk.Entry(self.labelframe)
-        self.entry_filename.pack()
         self.button = ttk.Button(self.labelframe, text="Import", command=self.import_csv_confirm)
         self.button.pack() 
 
     def import_csv_confirm(self):
-        filename = self.entry_filename.get()
+        filename = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
         Storage().order_import_CSV_update(filename)
         self.create_frame("Import CSV")
         self.label = ttk.Label(self.labelframe, text="CSV imported successfully")
@@ -349,15 +354,11 @@ class GUI(tk.Tk):
 
     def export_csv(self):
         self.create_frame("Export CSV")
-        self.label = ttk.Label(self.labelframe, text="Filename:")
-        self.label.pack()
-        self.entry_filename = ttk.Entry(self.labelframe)
-        self.entry_filename.pack()
         self.button = ttk.Button(self.labelframe, text="Export", command=self.export_csv_confirm)
         self.button.pack()
 
     def export_csv_confirm(self):
-        filename = self.entry_filename.get()
+        filename = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
         Storage().order_export_CSV(filename)
         self.create_frame("Export CSV")
         self.label = ttk.Label(self.labelframe, text="CSV exported successfully")
@@ -365,10 +366,9 @@ class GUI(tk.Tk):
 
     def view_users(self):
         self.create_frame("View Users")
-        self.treeview = ttk.Treeview(self.labelframe, columns=("ID", "Username", "Role"))
-        self.treeview.heading("#0", text="ID")
-        self.treeview.heading("#1", text="Username")
-        self.treeview.heading("#2", text="Role")
+        self.treeview = ttk.Treeview(self.labelframe, columns=("Role"))
+        self.treeview.heading("#0", text="Username")
+        self.treeview.heading("#1", text="Role")
         self.treeview.pack(fill=tk.BOTH, expand=True)
         self.button = ttk.Button(self.labelframe, text="Refresh", command=self.refresh_users)
         self.button.pack()
@@ -378,7 +378,7 @@ class GUI(tk.Tk):
         self.treeview.delete(*self.treeview.get_children())
         self.users = User().get_users()
         for user in self.users:
-            self.treeview.insert("", "end", values=user)
+            self.treeview.insert("", "end",text=user[0], values=user[1])
 
     def add_users(self):
         self.create_frame("Add Users")
@@ -394,6 +394,26 @@ class GUI(tk.Tk):
         self.label.pack()
         self.entry_role = ttk.Entry(self.labelframe)
         self.entry_role.pack()
+        self.label = ttk.Label(self.labelframe, text="Storage View: (0/1)")
+        self.label.pack()
+        self.entry_storage_view = ttk.Entry(self.labelframe)
+        self.entry_storage_view.pack()
+        self.label = ttk.Label(self.labelframe, text="Storage Edit: (0/1)")
+        self.label.pack()
+        self.entry_storage_edit = ttk.Entry(self.labelframe)
+        self.entry_storage_edit.pack()
+        self.label = ttk.Label(self.labelframe, text="Users View: (0/1)")
+        self.label.pack()
+        self.entry_users_view = ttk.Entry(self.labelframe)
+        self.entry_users_view.pack()
+        self.label = ttk.Label(self.labelframe, text="Users Edit: (0/1)")
+        self.label.pack()
+        self.entry_users_edit = ttk.Entry(self.labelframe)
+        self.entry_users_edit.pack()
+        self.label = ttk.Label(self.labelframe, text="Permissions Edit: (0/1)")
+        self.label.pack()
+        self.entry_permissions_edit = ttk.Entry(self.labelframe)
+        self.entry_permissions_edit.pack()
         self.button = ttk.Button(self.labelframe, text="Add", command=self.add_users_confirm)
         self.button.pack()
 
@@ -401,10 +421,22 @@ class GUI(tk.Tk):
         username = self.entry_username.get()
         password = self.entry_password.get()
         role = self.entry_role.get()
-        User().register(username, password, role)
-        self.create_frame("Add Users")
-        self.label = ttk.Label(self.labelframe, text="User added successfully")
-        self.label.pack()
+        storage_view = self.entry_storage_view.get()
+        storage_edit = self.entry_storage_edit.get()
+        users_view = self.entry_users_view.get()
+        users_edit = self.entry_users_edit.get()
+        permissions_edit = self.entry_permissions_edit.get()
+        try:
+            User().add_user(username, password, role, storage_view, storage_edit, users_view, users_edit, permissions_edit)
+            self.create_frame("Add Users")
+            self.label = ttk.Label(self.labelframe, text="User added successfully")
+            self.label.pack()
+        except:
+            self.create_frame("Add Users")
+            self.label = ttk.Label(self.labelframe, text="User already exists")
+            self.label.pack()
+            return
+        
 
     def edit_users(self):
         self.create_frame("Edit Users")
@@ -423,12 +455,12 @@ class GUI(tk.Tk):
             self.label = ttk.Label(self.labelframe, text="Password:")
             self.label.pack()
             self.entry_password = ttk.Entry(self.labelframe)
-            self.entry_password.insert(0, user[2])
+            self.entry_password.insert(0, user[1])
             self.entry_password.pack()
             self.label = ttk.Label(self.labelframe, text="Role:")
             self.label.pack()
             self.entry_role = ttk.Entry(self.labelframe)
-            self.entry_role.insert(0, user[3])
+            self.entry_role.insert(0, user[2])
             self.entry_role.pack()
             self.button = ttk.Button(self.labelframe, text="Edit", command=self.edit_users_confirm)
             self.button.pack()
@@ -501,8 +533,8 @@ class GUI(tk.Tk):
             self.label = ttk.Label(self.labelframe, text="Admin:")
             self.label.pack()
             self.entry_admin = ttk.Entry(self.labelframe)
-            for n in user:
-                print(n)
+            #for n in user:
+            #    print(n)
             self.entry_admin.insert(0, user[1])
             self.entry_admin.pack()
             self.label = ttk.Label(self.labelframe, text="Storage View:")
@@ -550,7 +582,50 @@ class GUI(tk.Tk):
         self.label = ttk.Label(self.labelframe, text="Permissions edited successfully")
         self.label.pack()
 
-    
+    def widgets_dissable(self):
+        self.menu_storage.entryconfig("View", state="disabled")
+        self.menu_storage.entryconfig("Add", state="disabled")
+        self.menu_storage.entryconfig("Edit", state="disabled")
+        self.menu_storage.entryconfig("Delete", state="disabled")
+        self.menu_orders.entryconfig("View", state="disabled")
+        self.menu_orders.entryconfig("Add", state="disabled")
+        self.menu_orders.entryconfig("Edit", state="disabled")
+        self.menu_orders.entryconfig("Delete", state="disabled")
+        self.menu_orders.entryconfig("Import CSV", state="disabled")
+        self.menu_orders.entryconfig("Export CSV", state="disabled")
+        self.menu_users.entryconfig("View", state="disabled")
+        self.menu_users.entryconfig("Add", state="disabled")
+        self.menu_users.entryconfig("Edit", state="disabled")
+        self.menu_users.entryconfig("Delete", state="disabled")
+        self.menu_users.entryconfig("Change Password", state="disabled")
+        self.menu_users.entryconfig("Permissions", state="disabled")
+
+    def widgets_permission_update(self, logged_user):
+        user=User().get_permissions(logged_user)
+        if user[2]==1:
+            self.menu_storage.entryconfig("View", state="normal")
+            self.menu_orders.entryconfig("View", state="normal")
+            self.menu_orders.entryconfig("Export CSV", state="normal")
+        if user[3]==1:
+            self.menu_storage.entryconfig("Add", state="normal")
+            self.menu_storage.entryconfig("Edit", state="normal")
+            self.menu_storage.entryconfig("Delete", state="normal")
+            self.menu_orders.entryconfig("Add", state="normal")
+            self.menu_orders.entryconfig("Edit", state="normal")
+            self.menu_orders.entryconfig("Delete", state="normal")
+            self.menu_orders.entryconfig("Import CSV", state="normal")
+            self.menu_orders.entryconfig("Export CSV", state="normal")
+        if user[4]==1:
+            self.menu_users.entryconfig("View", state="normal")
+        if user[5]==1:
+            #self.menu_users.entryconfig("Add", state="normal")
+            self.menu_users.entryconfig("Edit", state="normal")
+            self.menu_users.entryconfig("Delete", state="normal")
+            self.menu_users.entryconfig("Change Password", state="normal")
+        if user[6]==1:
+            self.menu_users.entryconfig("Permissions", state="normal")
+        if user[5]==1 and user[6]==1:
+            self.menu_users.entryconfig("Add", state="normal")
 
 
     def log_out(self):

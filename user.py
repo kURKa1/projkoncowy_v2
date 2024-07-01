@@ -5,7 +5,7 @@ class User:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS users
-                     (username TEXT PRIMARY KEY, password TEXT, role TEXT)''')
+                     (username TEXT PRIMARY KEY NOT NULL UNIQUE, password TEXT NOT NULL, role TEXT)''')
         conn.close()
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
@@ -39,10 +39,19 @@ class User:
         conn.close()
         return True
     
+    def add_user(self, username, password, role, storage_view, storage_edit, users_view, users_edit, permissions_edit):
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (username, password, role))
+        c.execute("INSERT INTO permissions (permission_username, admin, storage_view, storage_edit, users_view, users_edit, permissions_edit) VALUES (?, 0, ?, ?, ?, ?, ?)", (username, storage_view, storage_edit, users_view, users_edit, permissions_edit))
+        conn.commit()
+        conn.close()
+        return True
+    
     def get_users(self):
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
-        c.execute("SELECT * FROM users")
+        c.execute("SELECT username, role FROM users")
         result = c.fetchall()
         conn.close()
         return result
@@ -72,6 +81,13 @@ class User:
         conn.close()
         return True
     
+    def update_role(self, username, role):
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        c.execute("UPDATE users SET role = ? WHERE username = ?", (role, username))
+        conn.commit()
+        conn.close()
+        return True
     
     def get_permissions(self, username):
         conn = sqlite3.connect('users.db')

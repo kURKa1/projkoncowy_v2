@@ -101,23 +101,23 @@ class Storage:
     def get_order(self, id):
         conn = sqlite3.connect('Storage.db')
         c = conn.cursor()
-        c.execute("SELECT * FROM orders WHERE id = ?", (id,))
+        c.execute("SELECT * FROM orders WHERE order_id = ?", (id,))
         result = c.fetchone()
         conn.close()
         return result
     
-    def delete_order(self, id):
+    def delete_order(self, order_id):
         conn = sqlite3.connect('Storage.db')
         c = conn.cursor()
-        c.execute("DELETE FROM orders WHERE id = ?", (id,))
+        c.execute("DELETE FROM orders WHERE order_id = ?", (order_id,))
         conn.commit()
         conn.close()
         return True
     
-    def update_order(self, id, quantity):
+    def update_order(self, order_id, quantity):
         conn = sqlite3.connect('Storage.db')
         c = conn.cursor()
-        c.execute("UPDATE orders SET quantity = ? WHERE id = ?", (quantity, id))
+        c.execute("UPDATE orders SET quantity = ? WHERE order_id = ?", (quantity, order_id))
         conn.commit()
         conn.close()
         return True
@@ -127,8 +127,8 @@ class Storage:
         c = conn.cursor()
         with open(filename, 'r') as file:
             for line in file:
-                id, quantity = line.split(',')
-                c.execute("UPDATE orders SET quantity = ? WHERE id = ?", (quantity, id))
+                order_id, quantity = line.split(',')
+                c.execute("UPDATE orders SET quantity = ? WHERE order_id = ?", (quantity, order_id))
         conn.commit()
         conn.close()
         return True
